@@ -198,7 +198,7 @@ def channels_table():
         cursor.execute(create_query)
         mydb.commit()
     except:
-        st.write("Channels Table alredy created")    
+        print("Channels Table alredy created")    
 
 
     ch_list = []
@@ -231,7 +231,7 @@ def channels_table():
             cursor.execute(insert_query,values)
             mydb.commit()    
         except:
-            st.write("Channels values are already inserted")
+            print("Channels values are already inserted")
 
             
 def playlists_table():
@@ -258,7 +258,7 @@ def playlists_table():
         cursor.execute(create_query)
         mydb.commit()
     except:
-        st.write("Playlists Table alredy created")    
+        print("Playlists Table alredy created")    
 
 
     db = client["Youtube_data"]
@@ -289,7 +289,7 @@ def playlists_table():
             cursor.execute(insert_query,values)
             mydb.commit()    
         except:
-            st.write("Playlists values are already inserted")
+            print("Playlists values are already inserted")
 
 def videos_table():
 
@@ -327,7 +327,7 @@ def videos_table():
         cursor.execute(create_query)             
         mydb.commit()
     except:
-        st.write("Videos Table alrady created")
+        print("Videos Table alrady created")
 
     vi_list = []
     db = client["Youtube_data"]
@@ -380,7 +380,7 @@ def videos_table():
             cursor.execute(insert_query,values)
             mydb.commit()
         except:
-            st.write("videos values already inserted in the table")
+            print("videos values already inserted in the table")
         
 
 def comments_table():
@@ -407,7 +407,7 @@ def comments_table():
         mydb.commit()
         
     except:
-        st.write("Comments Table already created")
+        print("Comments Table already created")
 
     com_list = []
     db = client["Youtube_data"]
@@ -439,7 +439,7 @@ def comments_table():
                 cursor.execute(insert_query,values)
                 mydb.commit()
             except:
-               st.write("This comments are already exist in comments table")
+               print("This comments are already exist in comments table")
 
 def tables():
     channels_table()
