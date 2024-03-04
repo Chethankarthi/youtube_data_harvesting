@@ -1,10 +1,10 @@
+#importing the required libraries
 import pymongo
 import psycopg2
 import pandas as pd
 import streamlit as st
 from streamlit_option_menu import option_menu
 from googleapiclient.discovery import build
-
 
 
 #API key connection
@@ -140,7 +140,7 @@ def channel_details(channel_id):
     
     return "upload completed successfully"
 
-#Table creation for channels,playlists, videos, comments
+#Table creation in sql database for channels
 def channels_table():
     mydb = psycopg2.connect(host="localhost",
             user="postgres",
@@ -149,60 +149,51 @@ def channels_table():
             port = "5432"
             )
     cursor = mydb.cursor()
-
+    
+#if there is any table with name channels in mysql database to delete that table
     drop_query = "drop table if exists channels"
     cursor.execute(drop_query)
     mydb.commit()
 
+#creating the table with respected columns with names as mentioned below
     try:
-        create_query = '''create table if not exists channels(Channel_Name varchar(100),
-                        Channel_Id varchar(80) primary key, 
-                        Subscription_Count bigint, 
-                        Views bigint,
-                        Total_Videos int,
-                        Channel_Description text,
+        create_query = '''create table if not exists channels(Channel_Name varchar(100),Channel_Id varchar(80) primary key, 
+                        Subscription_Count bigint, Views bigint,Total_Videos int,Channel_Description text,
                         Playlist_Id varchar(50))'''
         cursor.execute(create_query)
         mydb.commit()
     except:
         print("Channels Table alredy created")    
 
-
-    ch_list = []
+#to fetch the collected channels info from mongodb
+    channels_list = []
     db = client["Youtube_data"]
     coll1 = db["channel_details"]
     for ch_data in coll1.find({},{"_id":0,"channel_information":1}):
-        ch_list.append(ch_data["channel_information"])
-    df = pd.DataFrame(ch_list)
+        channels_list.append(ch_data["channel_information"])
     
+#converting the data into dataframe
+    df = pd.DataFrame(channels_list)
+    
+#migrating the values from mongodb to the tables created in the sql database
     for index,row in df.iterrows():
-        insert_query = '''INSERT into channels(Channel_Name,
-                                                    Channel_Id,
-                                                    Subscription_Count,
-                                                    Views,
-                                                    Total_Videos,
-                                                    Channel_Description,
-                                                    Playlist_Id)
+        insert_query = '''INSERT into channels(Channel_Name,Channel_Id,Subscription_Count,
+                                                    Views,Total_Videos,Channel_Description,Playlist_Id)
                                         VALUES(%s,%s,%s,%s,%s,%s,%s)'''
             
-
-        values =(
-                row['Channel_Name'],
-                row['Channel_Id'],
-                row['Subscription_Count'],
-                row['Views'],
-                row['Total_Videos'],
-                row['Channel_Description'],
-                row['Playlist_Id'])
+        values =(row['Channel_Name'],row['Channel_Id'],row['Subscription_Count'],row['Views'],
+                row['Total_Videos'],row['Channel_Description'],row['Playlist_Id'])
         try:                     
             cursor.execute(insert_query,values)
             mydb.commit()    
         except:
             print("Channels values are already inserted")
 
-            
-def videos_table():
 
+#Table creation in sql database for videos          
+def videos_table():
+    
+    #mysql connection 
     mydb = psycopg2.connect(host="localhost",
                 user="postgres",
                 password="Chethu@99",
@@ -211,81 +202,43 @@ def videos_table():
                 )
     cursor = mydb.cursor()
 
+#if there is any table with name videos in mysql database to delete that table
     drop_query = "drop table if exists videos"
     cursor.execute(drop_query)
     mydb.commit()
 
+#creating the table with respected columns with names as mentioned below
     try:
-        create_query = '''create table if not exists videos(
-                        Channel_Name varchar(150),
-                        Channel_Id varchar(100),
-                        Video_Id varchar(50) primary key, 
-                        Title varchar(150), 
-                        Tags text,
-                        Thumbnail varchar(225),
-                        Description text, 
-                        Published_Date timestamp,
-                        Duration interval, 
-                        Views bigint, 
-                        Likes bigint,
-                        Comments int,
-                        Favorite_Count int, 
-                        Definition varchar(10), 
-                        Caption_Status varchar(50) 
-                        )''' 
+        create_query = '''create table if not exists videos(Channel_Name varchar(150),Channel_Id varchar(100),
+                        Video_Id varchar(50) primary key, Title varchar(150), Tags text,Thumbnail varchar(225),
+                        Description text, Published_Date timestamp,Duration interval, Views bigint, Likes bigint,
+                        Comments int,Favorite_Count int, Definition varchar(10), Caption_Status varchar(50) )''' 
                         
         cursor.execute(create_query)             
         mydb.commit()
     except:
         print("Videos Table alrady created")
 
-    vi_list = []
+#to fetch the collected videos info from mongodb
+    videos_list = []
     db = client["Youtube_data"]
     coll1 = db["channel_details"]
     for vi_data in coll1.find({},{"_id":0,"video_information":1}):
         for i in range(len(vi_data["video_information"])):
-            vi_list.append(vi_data["video_information"][i])
-    df2 = pd.DataFrame(vi_list)
-        
+            videos_list.append(vi_data["video_information"][i])
+            
+#converting data into dataframe     
+    df2 = pd.DataFrame(videos_list)
     
-    for index, row in df2.iterrows():
-        insert_query = '''
-                    INSERT INTO videos (Channel_Name,
-                        Channel_Id,
-                        Video_Id, 
-                        Title, 
-                        Tags,
-                        Thumbnail,
-                        Description, 
-                        Published_Date,
-                        Duration, 
-                        Views, 
-                        Likes,
-                        Comments,
-                        Favorite_Count, 
-                        Definition, 
-                        Caption_Status 
-                        )
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
 
-                '''
-        values = (
-                    row['Channel_Name'],
-                    row['Channel_Id'],
-                    row['Video_Id'],
-                    row['Title'],
-                    row['Tags'],
-                    row['Thumbnail'],
-                    row['Description'],
-                    row['Published_Date'],
-                    row['Duration'],
-                    row['Views'],
-                    row['Likes'],
-                    row['Comments'],
-                    row['Favorite_Count'],
-                    row['Definition'],
-                    row['Caption_Status'])
-                                
+#migrating the values from mongodb to the tables created in the sql database
+    for index, row in df2.iterrows():
+        insert_query = '''INSERT INTO videos (Channel_Name,Channel_Id,Video_Id, Title, Tags,Thumbnail,Description, 
+                          Published_Date, Duration, Views, Likes,Comments, Favorite_Count, Definition, Caption_Status)
+                          VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)'''
+        values = (row['Channel_Name'],row['Channel_Id'],row['Video_Id'],row['Title'],row['Tags'],
+                  row['Thumbnail'],row['Description'],row['Published_Date'],row['Duration'],row['Views'],
+                  row['Likes'],row['Comments'],row['Favorite_Count'],row['Definition'],row['Caption_Status'])                     
         try:    
             cursor.execute(insert_query,values)
             mydb.commit()
@@ -293,8 +246,10 @@ def videos_table():
             print("videos values already inserted in the table")
         
 
+#Table creation in sql database for comments
 def comments_table():
     
+    #mysql connection
     mydb = psycopg2.connect(host="localhost",
                 user="postgres",
                 password="Chethu@99",
@@ -303,54 +258,49 @@ def comments_table():
                 )
     cursor = mydb.cursor()
 
+#if there is any table with name comments in mysql database to delete that table
     drop_query = "drop table if exists comments"
     cursor.execute(drop_query)
     mydb.commit()
+    
 
+#creating the table with respected columns with names as mentioned below
     try:
-        create_query = '''CREATE TABLE if not exists comments(Comment_Id varchar(100) primary key,
-                       Video_Id varchar(80),
-                       Comment_Text text, 
-                       Comment_Author varchar(150),
-                       Comment_Published timestamp)'''
+        create_query = '''CREATE TABLE if not exists comments(Comment_Id varchar(100) primary key,Video_Id varchar(80),
+                          Comment_Text text, Comment_Author varchar(150),Comment_Published timestamp)'''
         cursor.execute(create_query)
-        mydb.commit()
-        
+        mydb.commit()  
     except:
         print("Comments Table already created")
+        
 
-    com_list = []
+#to fetch the collected comments info from mongodb
+    comments_list = []
     db = client["Youtube_data"]
     coll1 = db["channel_details"]
     for com_data in coll1.find({},{"_id":0,"comment_information":1}):
         for i in range(len(com_data["comment_information"])):
-            com_list.append(com_data["comment_information"][i])
-    df3 = pd.DataFrame(com_list)
+            comments_list.append(com_data["comment_information"][i])
+
+#converting data into dataframe
+    df3 = pd.DataFrame(comments_list)
 
 
+
+#migrating the values from mongodb to the tables created in the sql database
     for index, row in df3.iterrows():
-            insert_query = '''
-                INSERT INTO comments (Comment_Id,
-                                      Video_Id ,
-                                      Comment_Text,
-                                      Comment_Author,
-                                      Comment_Published)
-                VALUES (%s, %s, %s, %s, %s)
-
-            '''
+            insert_query = '''INSERT INTO comments (Comment_Id,Video_Id,Comment_Text,Comment_Author,Comment_Published)
+                              VALUES (%s, %s, %s, %s, %s)'''
             values = (
-                row['Comment_Id'],
-                row['Video_Id'],
-                row['Comment_Text'],
-                row['Comment_Author'],
-                row['Comment_Published']
-            )
+                row['Comment_Id'],row['Video_Id'],row['Comment_Text'],row['Comment_Author'],row['Comment_Published'])
             try:
                 cursor.execute(insert_query,values)
                 mydb.commit()
             except:
                print("This comments are already exist in comments table")
 
+
+# calling all the tables under a single function
 def tables():
     channels_table()
     videos_table()
@@ -358,12 +308,12 @@ def tables():
     return "Tables Created successfully"
     
 def show_channels_table():
-    ch_list = []
+    channels_list = []
     db = client["Youtube_data"]
     coll1 = db["channel_details"] 
     for ch_data in coll1.find({},{"_id":0,"channel_information":1}):
-        ch_list.append(ch_data["channel_information"])
-    channels_table = st.dataframe(ch_list)
+        channels_list.append(ch_data["channel_information"])
+    channels_table = st.dataframe(channels_list)
     return channels_table
 
 
@@ -388,27 +338,38 @@ def show_comments_table():
     return comments_table
 
 
-#streamlit part
+#streamlit part 
 
 st.set_page_config(layout= "wide")
 st.markdown('<p style="text-decoration: underline;">PROJECT BY CHETHAN.B</p>', unsafe_allow_html=True)
 st.title("YOUTUBE DATA HARVESTING AND WAREHOUSING")
 st.write("")
 
+#creating a sidebar in streamlit web application
 with st.sidebar:
-    select= option_menu("Main Menu",["Home", "Data-Harvesting and Migrating","Structured_Data_Display","Ten-Queries"])
+    select= option_menu("Main Menu",["Home", "Data-Harvesting and Migrating","Structured_Data_Display","Data Analysis"])
 if select=="Home":
     col1,col2= st.columns(2)
     with col1:
         st.header("SKILLS REQUIRED")
-        st.caption('Python scripting')
-        st.caption("Data Scrapping")
-        st.caption("MongoDB")
-        st.caption("SQL")
-        st.caption("Streamlit")
+        st.caption("***Python scripting***")
+        st.caption("***Data Scrapping***")
+        st.caption("***MongoDB***")
+        st.caption("***SQL***")
+        st.caption("***Streamlit***")
     with col2:
         st.video("C:\\Users\\Admin\\Desktop\\youtube_project\\youtube_-_103984 (720p).mp4")
-    
+    col3,col4=st.columns(2)
+    with col3:
+        st.video("C:\\Users\\Admin\\Desktop\\youtube_project\\youtube123.mp4")
+    with col4:
+        st.header(":red[YouTube]")
+        st.caption("***World's Largest Video Sharing App***")
+        st.caption("***Shorts is a New added Feature***")
+        st.caption("***Share your videos with friends, family, and the world***")        
+        
+        
+#to fetch and store the info of a channel into mongodb database
 
 if select=="Data-Harvesting and Migrating":    
     channel_id = st.text_input("Please Enter Any Channel id")
@@ -427,11 +388,13 @@ if select=="Data-Harvesting and Migrating":
             else:
                 output = channel_details(channel)
                 st.success(output)
-            
+
+#migrate the collected data to SQL database 
     if st.button("Migrate to SQL"):
         display = tables()
         st.success(display)
-    
+
+#to show the tables of all the channels, videos, and comments on the dashboard
 if select=="Structured_Data_Display":    
     tab1, tab2, tab3= st.tabs(["CHANNELS_INFO", "VIDEO_INFO", "COMMENTS_INFO"])
     with tab1:
@@ -441,7 +404,9 @@ if select=="Structured_Data_Display":
     with tab3:
         show_comments_table()
 
-#SQL connection
+
+#query part for the analysis of data
+#SQL connection 
 mydb = psycopg2.connect(host="localhost",
             user="postgres",
             password="Chethu@99",
@@ -450,7 +415,8 @@ mydb = psycopg2.connect(host="localhost",
             )
 cursor = mydb.cursor()
 
-if select=="Ten-Queries" :   
+#Ten queries
+if select=="Data Analysis" :   
     question = st.selectbox(
         'Please Select Your Question',
         ('1. All the videos and the Channel Name',
@@ -464,6 +430,7 @@ if select=="Ten-Queries" :
         '9. average duration of all videos in each channel',
         '10. videos with highest number of comments'))
 
+#1st query
     if question=='1. All the videos and the Channel Name':
         query1='''select title as videos,channel_name as channelname from videos'''
         cursor.execute(query1)
@@ -471,7 +438,8 @@ if select=="Ten-Queries" :
         t1=cursor.fetchall()
         df=pd.DataFrame(t1,columns=["video title","channel name"])
         st.write(df)
-
+        
+#2nd query
     elif question=='2. Channels with most number of videos':
             query2='''select channel_name as channelname,total_videos as no_videos from channels
                     order by total_videos desc'''
@@ -481,6 +449,7 @@ if select=="Ten-Queries" :
             df2=pd.DataFrame(t2,columns=["channel name","No of videos"])
             st.write(df2)
 
+#3rd query
     elif question=='3. 10 most viewed videos':
             query3='''select views as views,channel_name as channelname,title as videotitle from videos
                     where views is not null order by views desc limit 10'''
@@ -489,7 +458,8 @@ if select=="Ten-Queries" :
             t3=cursor.fetchall()
             df3=pd.DataFrame(t3,columns=["views","channel name","videotitle"])
             st.write(df3)
-
+            
+#4th query
     elif question=='4. Comments in each video':
             query4='''select comments as no_comments,title as videotitle from videos where comments is not null'''
             cursor.execute(query4)
@@ -497,7 +467,8 @@ if select=="Ten-Queries" :
             t4=cursor.fetchall()
             df4=pd.DataFrame(t4,columns=["no of comments","videotitle"])
             st.write(df4)
-            
+
+#5th query          
     elif question=='5. Videos with highest likes':
             query5='''select title as videotitle,channel_name as channelname, likes as likecount
                     from videos where likes is not null order by likes desc'''
@@ -507,6 +478,7 @@ if select=="Ten-Queries" :
             df5=pd.DataFrame(t5,columns=["videotitle","channelname","likecount"])
             st.write(df5)
             
+#6th query            
     elif question=='6. likes of all videos':
             query6='''select likes as likecount,title as videotitle from videos'''
             cursor.execute(query6)
@@ -515,6 +487,7 @@ if select=="Ten-Queries" :
             df6=pd.DataFrame(t6,columns=["likecount","videotitle"])
             st.write(df6)
             
+#7th query            
     elif question=='7. views of each channel':
             query7='''select channel_name as channelname,views as  totalviews from channels'''
             cursor.execute(query7)
@@ -522,7 +495,8 @@ if select=="Ten-Queries" :
             t7=cursor.fetchall()
             df7=pd.DataFrame(t7,columns=["channel name","totalviews"])
             st.write(df7)
-            
+
+#8th query           
     elif question=='8. videos published in the year 2022':
             query8='''select title as video_title,published_date as videorelease,channel_name as channelname from videos
                             where extract(year from published_date)=2022'''
@@ -532,13 +506,15 @@ if select=="Ten-Queries" :
             df8=pd.DataFrame(t8,columns=["videotitle","published_date","channelname"])
             st.write(df8)
             
+#9th query            
     elif question=='9. average duration of all videos in each channel':
             query9='''select channel_name as channelname,AVG(duration) as averageduration from videos group by channel_name'''
             cursor.execute(query9)
             mydb.commit()
             t9=cursor.fetchall()
-            df9=pd.DataFrame(t9,columns=["channelname","averageduration"])
-
+            df9=pd.DataFrame(t9,columns=["channelname","averageduration"])  
+            
+#converting the avg duration and time into string
             T9=[]
             for index,row in df9.iterrows():
                     channel_title=row["channelname"]
@@ -547,7 +523,8 @@ if select=="Ten-Queries" :
                     T9.append(dict(channeltitle=channel_title,avgduration=average_duration_str))
             df1=pd.DataFrame(T9)
             st.write(df1)
-            
+
+#10th query
     elif question=='10. videos with highest number of comments':
             query10='''select title as videotitle,channel_name as channelname,comments as comments from videos 
                     where comments is not null order by comments desc'''
